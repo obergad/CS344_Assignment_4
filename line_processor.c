@@ -344,6 +344,7 @@ void *write_output(void *args){
     int itemLen = strlen(item);
     int numLines = itemLen / 80;
     int numChar = numLines * 80;
+
     while (strncmp(item, "STOP\n", strlen("STOP\n")) != 0) {
     if(itemLen >= 80){
       for (size_t j = 0; j < numChar ; j++) {
@@ -370,27 +371,19 @@ int main()
       // Create all threads one by one
       thread_args[index] = index;
       //----------------------------------------------------------------------------------------------
-      switch(index){
-        case 0:
+
           //Case for thread 1 to run the function: input_thread();
           result_code = pthread_create(&threads[index], NULL, get_input, NULL);
-          break;
-        case 1:
+
           //Case for thread 2 to run the function:
           result_code = pthread_create(&threads[index], NULL, line_separator, (void *) &thread_args[index]);
-          break;
-        case 2:
+
           //Case for thread 3 to run the function:
           result_code = pthread_create(&threads[index], NULL, plus_sign, (void *) &thread_args[index]);
-          break;
-        case 3:
+
           //Case for thread 4 to run the function:
           result_code = pthread_create(&threads[index], NULL, write_output, (void *) &thread_args[index]);
 
-          break;
-        default:
-          printf("It should never get here\n");
-      }
       assert(0 == result_code);
       //----------------------------------------------------------------------------------------------
       }
