@@ -1,8 +1,26 @@
+/* Program Name: line_processor.c
+** Author: Adam Oberg
+** Description: In this assignment, you'll write a program that will get you
+** familiar with the use of threads, mutual exclusion and condition variables.
+
+
+Assignment Goals:
+================================================================================
+      XX -Thread 1, called the Input Thread, reads in lines of characters from |
+         -the standard input.                                                  |
+      XX -Thread 2, called the Line Separator Thread, replaces every line      |
+         -separator in the input by a space.                                   |
+      XX -Thread, 3 called the Plus Sign thread, replaces every pair of plus   |
+         -signs,  i.e., "++", by a "^".                                        |
+      XX -Thread 4, called the Output Thread, writes this processed data to    |
+         -standard output as lines of exactly 80 characters.                   |
+================================================================================
+
+*/
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <math.h> // must link with -lm
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <string.h>
@@ -13,23 +31,13 @@
 #include <stddef.h>
 
 
-
-
-/*
-A program with a pipeline of 3 threads that interact with each other as producers and consumers.
-- Input thread is the first thread in the pipeline. It gets input from the user and puts it in a buffer it shares with the next thread in the pipeline.
-- Square root thread is the second thread in the pipeline. It consumes items from the buffer it shares with the input thread. It computes the square root of this item. It puts the computed value in a buffer it shares with the next thread in the pipeline. Thus this thread implements both consumer and producer functionalities.
-- Output thread is the third thread in the pipeline. It consumes items from the buffer it shares with the square root thread and prints the items.
-
-*/
-
 // Size of the buffers
 #define SIZE 50
 #define MAXCHAR 1024
 
-// Number of items that will be produced. This number is less than the size of the buffer. Hence, we can model the buffer as being unbounded.
+// Number of items that will be produced. This number is less than the size of the buffer.
+//Hence, we can model the buffer as being unbounded.
 #define NUM_THREADS 4
-
 // Buffer 1, shared resource between input thread and square-root thread
 char buffer_1[SIZE][MAXCHAR];
 // Number of items in the buffer
@@ -71,9 +79,10 @@ pthread_mutex_t mutex_3 = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t full_3 = PTHREAD_COND_INITIALIZER;
 
 
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-//                                               Start and End Code                                                    |
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+//                                               Start and End Code            |
+//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 /*
 This fucntion is just made to display the creator of the program.
@@ -110,15 +119,15 @@ void exitProgram(){
   exit(0);
 
 }
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-//                                               Start and End Code                                                    |
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-//                                                                                                                     |
-//                                                                                                                     |
-//                                                                                                                     |
-//----------------------------------------------------------------------------------------------------------------------
-//                                                 Start Buffer 1                                                      |
-//----------------------------------------------------------------------------------------------------------------------
+//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+//                                Start and End Code                           |
+//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+//                                                                             |
+//                                                                             |
+//                                                                             |
+//------------------------------------------------------------------------------
+//                                  Start Buffer 1                             |
+//------------------------------------------------------------------------------
 /*
 Get input from the user.
 This function doesn't perform any error checking.
@@ -127,15 +136,19 @@ char* get_user_input(){
   char* userInput;
   char *currLine = NULL;
   size_t max = MAXCHAR;
-  userInput = calloc(MAXCHAR + 1, sizeof(char)); //Allocating space for userinput and clear userInput
+  userInput = calloc(MAXCHAR + 1, sizeof(char));
+  //Allocating space for userinput and clear userInput
   getline(&currLine, &max , stdin);
 
 
+  strcpy(userInput,currLine);
   if(strcmp(userInput, "\n") == 0 ){
     printf("Error: No input has been given.\n");
     fflush(stdout);
     exitProgram();
   }
+
+
   return userInput;
 }
 
@@ -162,10 +175,16 @@ void put_buff_1(char* item){
  Put the item in the buffer shared with the square_root thread.
 */
 void *get_input(void *args){
-
     // Get the user input
+  int neverstop = 1;
+  while (neverstop == 1) {
+
     char* item = get_user_input();
     put_buff_1(item);
+    if (strncmp(item, "STOP\n", strlen("STOP\n")) == 0) {
+      break;
+    }
+  }
     return NULL;
 }
 
@@ -187,15 +206,15 @@ char* get_buff_1(){
   // Return the item
   return item;
 }
-//----------------------------------------------------------------------------------------------------------------------
-//                                                 End Buffer 1                                                        |
-//----------------------------------------------------------------------------------------------------------------------
-//                                                                                                                     |
-//                                                                                                                     |
-//                                                                                                                     |
-//----------------------------------------------------------------------------------------------------------------------
-//                                                 Start Buffer 2                                                      |
-//----------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+//                                    End Buffer 1                             |
+//------------------------------------------------------------------------------
+//                                                                             |
+//                                                                             |
+//                                                                             |
+//------------------------------------------------------------------------------
+//                                  Start Buffer 2                             |
+//------------------------------------------------------------------------------
 /*
  Put an item in buff_2
 */
@@ -215,22 +234,32 @@ void put_buff_2(char* item){
 
 /*
 -Function: line_separator
--Description: This is a fucntion to start to replace every line separator in the input by a space.
+-Description: This is a fucntion to start to replace every line separator in the
+- input by a space.
 - Input: NULL
 - OUTPUT: NULL
 */
 void *line_separator(void *args){
     char* item;
-    item = get_buff_1();
-    int i = 0;
-    int sizeofbuffer1 = strlen(item);
-    while(i != sizeofbuffer1){
-      if(item[i] == '\n'){
-        item[i] = ' ';      //Loop through the string arrray untill newline then replace with ' ' and continue
+    int neverstop = 1;
+  while (neverstop == 1) {
+      item = get_buff_1();
+      int i = 0;
+      int sizeofbuffer1 = strlen(item);
+      while(i != sizeofbuffer1){
+        if(item[i] == '\n'){
+          item[i] = ' ';
+          //Loop through the string arrray untill newline then replace with ' '
+          //and continue
+        }
+        i++;
       }
-      i++;
+      put_buff_2(item);
+      if (strncmp(item, "STOP ", strlen("STOP ")) == 0) {
+          break;
+      }
     }
-    put_buff_2(item);
+
     return NULL;
 }
 
@@ -252,15 +281,15 @@ char* get_buff_2(){
   // Return the item
   return item;
 }
-//----------------------------------------------------------------------------------------------------------------------
-//                                                 End Buffer 2                                                        |
-//----------------------------------------------------------------------------------------------------------------------
-//                                                                                                                     |
-//                                                                                                                     |
-//                                                                                                                     |
-//----------------------------------------------------------------------------------------------------------------------
-//                                                 Start Buffer 3                                                      |
-//----------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+//                                  End Buffer 2                               |
+//------------------------------------------------------------------------------
+//                                                                             |
+//                                                                             |
+//                                                                             |
+//------------------------------------------------------------------------------
+//                                 Start Buffer 3                              |
+//------------------------------------------------------------------------------
 /*
  Put an item in buff_3
 */
@@ -287,26 +316,35 @@ void put_buff_3(char* item){
 */
 void* plus_sign(){
   char* item;
-  item = get_buff_2();
-  int i = 0;
-  int j;
-  int itemlen = strlen(item);
-  char temp;
-  while(i != itemlen){
-    if(item[i] == '+' && item[i + 1] == '+'){
-      item[i] = '^';      //Loop through the string arrray untill newline then replace with ' ' and continue
-      j = i + 1;
-      while(j != itemlen){
-        temp = item[j + 1];
-        item[j] = temp;
-        j++;
+  int neverstop = 1;
+  while (neverstop == 1) {
+    item = get_buff_2();
+    int i = 0;
+    int j;
+    int itemlen = strlen(item);
+    char temp;
+    while(i != itemlen){
+      if(item[i] == '+' && item[i + 1] == '+'){
+        item[i] = '^';      //Loop through the string arrray untill newline then
+                          //replace with ' ' and continue
+        j = i + 1;
+        while(j != itemlen){
+          temp = item[j + 1];
+          item[j] = temp;
+          j++;
+        }
+        item[j+1] = '\0';
       }
-      item[j+1] = '\0';
+      i++;
     }
-    i++;
+    put_buff_3(item);
+    if (strncmp(item, "STOP ", strlen("STOP ")) == 0) {
+      break;
+    }
   }
 
-  put_buff_3(item);
+
+
   return NULL;
 }
 /*
@@ -327,10 +365,9 @@ char* get_buff_3(){
   // Return the item
   return item;
 }
-//----------------------------------------------------------------------------------------------------------------------
-//                                                 End Buffer 3                                                        |
-//----------------------------------------------------------------------------------------------------------------------
-
+//------------------------------------------------------------------------------
+//                                  End Buffer 3                               |
+//------------------------------------------------------------------------------
 
 
 /*
@@ -340,59 +377,70 @@ char* get_buff_3(){
 */
 void *write_output(void *args){
     char* item;
-    item = get_buff_3();
-    int itemLen = strlen(item);
-    int numLines = itemLen / 80;
-    int numChar = numLines * 80;
-
-    while (strncmp(item, "STOP\n", strlen("STOP\n")) != 0) {
-    if(itemLen >= 80){
-      for (size_t j = 0; j < numChar ; j++) {
-        printf("%c",item[j]);
-        if ((j + 1) % 80 == 0 && j != 0) {
+    int neverstop = 1;
+    char* masterItem = calloc(sizeof(MAXCHAR + 1), sizeof(char));
+    int p;
+    while ( neverstop == 1 ) {
+      item = get_buff_3();
+      int itemLen = strlen(item);
+      for (int j = 0; j < itemLen; j++) {
+        // printf("item[j]: %c\n", item[j]);
+        masterItem[p] = item[j];    //Copy charactes into master string
+        p++;
+        // printf("masterItem[j]: %c\n", masterItem[j]);
+        if(p == 80) {  // Check to see if len of master is 80
+          for (int i = 0; i < 80; i++) { //Print if 80 char
+            printf("%c", masterItem[i]);
+          }
           printf("\n");
-        }
-      }
-    }
-  }
+          p = 0;
 
-    printf("\n");
+        }
+
+      }
+
+      if (strncmp(item, "STOP ", strlen("STOP ")) == 0) {
+        break;
+      }
+
+      // get string, concat into master string, loop if count mastersting > 80, print 80 remove
+
+
+
+    //   int itemLen = strlen(item);   // Get the length of the string
+    //   int numLines = itemLen / 80;  // Find how many lines to print
+    //   int numChar = numLines * 80;  // find the ammount of chars to print
+    //   if (strncmp(item, "STOP ", strlen("STOP ")) == 0) {
+    //     break;
+    //   }
+    //   else if(itemLen >= 80){
+    //     for (size_t j = 0; j < numChar ; j++) {
+    //       printf("%c",item[j]);   //print each char
+    //       if ((j + 1) % 80 == 0 && j != 0) {
+    //      printf("\n");
+    //     }
+    //   }
+    // }
+  }
     return NULL;
 }
 int main()
 {
-    srand(time(0));
-    // Create the threads
-    start_program();
-    pthread_t threads[NUM_THREADS];
-    int thread_args[NUM_THREADS];
-    int result_code, index;
-    for (index = 0; index < NUM_THREADS; ++index) {
-      // Create all threads one by one
-      thread_args[index] = index;
-      //----------------------------------------------------------------------------------------------
+  srand(time(0));
+  pthread_t input_t, line_separator_t, plus_sign_t, output_t;
+  // Create the threads
+  pthread_create(&input_t, NULL, get_input, NULL);
+  pthread_create(&line_separator_t, NULL, line_separator, NULL);
+  pthread_create(&plus_sign_t, NULL, plus_sign, NULL);
+  pthread_create(&output_t, NULL, write_output, NULL);
 
-          //Case for thread 1 to run the function: input_thread();
-          result_code = pthread_create(&threads[index], NULL, get_input, NULL);
+  // Wait for the threads to terminate
+  pthread_join(input_t, NULL);
+  pthread_join(line_separator_t, NULL);
+  pthread_join(plus_sign_t, NULL);
+  pthread_join(output_t, NULL);
 
-          //Case for thread 2 to run the function:
-          result_code = pthread_create(&threads[index], NULL, line_separator, (void *) &thread_args[index]);
-
-          //Case for thread 3 to run the function:
-          result_code = pthread_create(&threads[index], NULL, plus_sign, (void *) &thread_args[index]);
-
-          //Case for thread 4 to run the function:
-          result_code = pthread_create(&threads[index], NULL, write_output, (void *) &thread_args[index]);
-
-      assert(0 == result_code);
-      //----------------------------------------------------------------------------------------------
-      }
-
-      // Wait for each thread to complete
-      for (index = 0; index < NUM_THREADS; ++index){
-        result_code = pthread_join(threads[index], NULL);
-        assert(0 == result_code);
-      }
+  return EXIT_SUCCESS;
     exitProgram();
     return EXIT_SUCCESS;
 }
